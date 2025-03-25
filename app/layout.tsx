@@ -2,6 +2,7 @@ import './globals.css'
 import { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { EB_Garamond } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/react'
 
 const ebGaramond = EB_Garamond({
   subsets: ['latin'],
@@ -159,6 +160,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         {children}
+        <Analytics />
       </body>
     </html>
   )
