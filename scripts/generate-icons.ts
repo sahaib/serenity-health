@@ -57,6 +57,20 @@ async function generateOGImage(svg: string, outputPath: string) {
     .toFile(outputPath);
 }
 
+async function generateFavicon(svg: string, outputPath: string) {
+  // For favicon, we'll generate a high-quality PNG and use it directly
+  await sharp(Buffer.from(svg))
+    .resize(32, 32, {
+      fit: 'contain',
+      background: { r: 0, g: 0, b: 0, alpha: 0 }
+    })
+    .png()
+    .toFile(outputPath.replace('.ico', '.png'));
+
+  // Note: Since Sharp doesn't support ICO format directly, 
+  // we'll use the PNG as favicon which is widely supported by modern browsers
+}
+
 async function main() {
   // Convert HeartHandshake component to SVG string
   const svgString = renderToString(
@@ -68,6 +82,9 @@ async function main() {
   );
 
   const publicDir = path.join(process.cwd(), 'public');
+
+  // Generate favicon as PNG
+  await generateFavicon(svgString, path.join(publicDir, 'favicon.ico'));
 
   // Generate PWA icons
   await generateIcon(svgString, 192, path.join(publicDir, 'icon-192.png'));
@@ -88,9 +105,6 @@ async function main() {
   await sharp(Buffer.from(wideTileSvg))
     .resize(310, 150)
     .toFile(path.join(publicDir, 'mstile-310x150.png'));
-
-  // Generate favicon
-  await generateIcon(svgString, 32, path.join(publicDir, 'favicon.ico'));
 
   // Generate Apple Touch Icon
   await generateIcon(svgString, 180, path.join(publicDir, 'apple-touch-icon.png'));
