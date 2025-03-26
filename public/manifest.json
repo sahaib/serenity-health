@@ -4,10 +4,15 @@
   "description": "Your supportive AI companion for mental wellbeing",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#e0e7ff",
   "theme_color": "#6366f1",
   "orientation": "portrait",
   "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
@@ -23,9 +28,9 @@
   ],
   "shortcuts": [
     {
-      "name": "Start Chat",
-      "short_name": "Chat",
-      "description": "Start a new conversation",
+      "name": "Start New Chat",
+      "short_name": "New Chat",
+      "description": "Start a new conversation with Serenity AI",
       "url": "/?source=pwa",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }

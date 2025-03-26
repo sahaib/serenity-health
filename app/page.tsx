@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Brain, MessageCircle, Loader, Heart, HelpCircle, Moon, Sun, HeartHandshake, X } from 'lucide-react';
+import { Send, Brain, MessageCircle, Loader, Heart, HelpCircle, Moon, Sun, HeartHandshake, X, Upload, Download } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -147,19 +147,25 @@ export default function Home() {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showExportTooltip, setShowExportTooltip] = useState(false);
   const [sideSheet, setSideSheet] = useState<{ isOpen: boolean; title: string; content: React.ReactNode }>({
     isOpen: false,
     title: '',
     content: null
   });
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesContainerRef.current) {
+      const scrollContainer = messagesContainerRef.current;
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    }
   };
 
   useEffect(() => {
-    scrollToBottom();
+    // Add a small delay to ensure all content has rendered
+    setTimeout(scrollToBottom, 100);
   }, [messages]);
 
   // Handle dark mode toggle
@@ -219,6 +225,37 @@ export default function Home() {
     }
   };
 
+  const exportChat = () => {
+    // Only proceed if there are messages to export
+    if (messages.length === 0) return;
+    
+    // Create a formatted text version of the chat
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = `serenity-chat-${timestamp}.txt`;
+    
+    // Format the conversation with timestamps and clear role indicators
+    let chatContent = "Serenity Health AI - Chat Export\n";
+    chatContent += "Generated on: " + new Date().toLocaleString() + "\n\n";
+    
+    messages.forEach((message, i) => {
+      const roleLabel = message.role === 'user' ? 'You' : 'Serenity AI';
+      chatContent += `${roleLabel}:\n${message.content}\n\n`;
+    });
+    
+    // Create a downloadable blob and trigger download
+    const blob = new Blob([chatContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    
+    // Clean up
+    URL.revokeObjectURL(url);
+    document.body.removeChild(link);
+  };
+
   return (
     <>
       <div style={{
@@ -269,23 +306,72 @@ export default function Home() {
               </span>
             </div>
           </div>
-          <button
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '8px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: isDarkMode ? '#e5e7eb' : '#1f2937',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
-          </button>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {messages.length > 0 && (
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={exportChat}
+                  title="Export conversation"
+                  onMouseEnter={() => setShowExportTooltip(true)}
+                  onMouseLeave={() => setShowExportTooltip(false)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '8px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: isDarkMode ? '#e5e7eb' : '#1f2937',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <Download size={22} />
+                </button>
+                {showExportTooltip && (
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '-40px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    backgroundColor: isDarkMode ? '#374151' : '#f3f4f6',
+                    color: isDarkMode ? '#e5e7eb' : '#1f2937',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    whiteSpace: 'nowrap',
+                    zIndex: 10,
+                    boxShadow: isDarkMode 
+                      ? '0 4px 6px -1px rgba(0, 0, 0, 0.2)' 
+                      : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    opacity: 1,
+                    transition: 'opacity 0.2s ease',
+                    pointerEvents: 'none'
+                  }}>
+                    Export chat (no data saved online)
+                  </div>
+                )}
+              </div>
+            )}
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '8px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: isDarkMode ? '#e5e7eb' : '#1f2937',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
+            </button>
+          </div>
         </header>
 
         <div style={{
@@ -309,7 +395,7 @@ export default function Home() {
             Your supportive AI companion for mental wellbeing
           </div>
 
-          <div style={{
+          <div className="feature-grid" style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
             gap: '20px',
@@ -320,7 +406,7 @@ export default function Home() {
               { icon: '🎯', title: 'Focused Guidance', description: 'Get help with specific mental health concerns' },
               { icon: '🌱', title: 'Personal Growth', description: 'Develop coping strategies and emotional resilience' }
             ].map((feature, index) => (
-              <div key={index} style={{
+              <div key={index} className="feature-card" style={{
                 padding: '24px',
                 borderRadius: '16px',
                 background: isDarkMode ? 'rgba(23, 25, 35, 0.6)' : 'rgba(255, 255, 255, 0.25)',
@@ -333,14 +419,14 @@ export default function Home() {
                 gap: '12px'
               }}>
                 <span style={{ fontSize: '32px' }}>{feature.icon}</span>
-                <h3 style={{
+                <h3 className="feature-title" style={{
                   margin: 0,
                   fontSize: '22px',
                   fontWeight: '600',
                   color: isDarkMode ? '#e5e7eb' : '#1f2937',
                   letterSpacing: '0.01em'
                 }}>{feature.title}</h3>
-                <p style={{
+                <p className="feature-desc" style={{
                   margin: 0,
                   fontSize: '16px',
                   lineHeight: '1.6',
@@ -356,11 +442,14 @@ export default function Home() {
           maxWidth: '800px',
           flex: 1,
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          height: '60vh',
+          minHeight: '400px'
         }}>
           <div style={{ 
             flex: 1,
-            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
             border: '1px solid',
             borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.7)',
             borderRadius: '16px',
@@ -397,14 +486,14 @@ export default function Home() {
                   💭
                 </div>
                 <div>
-                  <h2 style={{
+                  <h2 className="welcome-title" style={{
                     margin: '0 0 8px 0',
                     fontSize: '24px',
                     fontWeight: '600',
                     color: isDarkMode ? '#e5e7eb' : '#1f2937',
                     letterSpacing: '0.01em'
-                  }}>Welcome to  Health AI</h2>
-                  <p style={{ 
+                  }}>Welcome to Health AI</h2>
+                  <p className="welcome-text" style={{ 
                     margin: 0, 
                     fontSize: '17px',
                     lineHeight: '1.6' 
@@ -414,10 +503,22 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div 
+                id="messagesContainer"
+                style={{ 
+                  flex: 1,
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '16px',
+                  overflow: 'auto',
+                  maxHeight: 'calc(60vh - 120px)'
+                }}
+                ref={messagesContainerRef}
+              >
                 {messages.map((message, index) => (
                   <div
                     key={index}
+                    className="chat-message"
                     style={{
                       alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start',
                       maxWidth: '85%',
@@ -460,6 +561,7 @@ export default function Home() {
                     Thinking...
                   </div>
                 )}
+                <div ref={messagesEndRef} style={{ height: '1px', width: '100%' }} />
               </div>
             )}
           </div>
@@ -491,6 +593,7 @@ export default function Home() {
                 fontSize: '15px',
                 outline: 'none'
               }}
+              className="chat-input"
             />
             <button
               type="submit"
@@ -505,6 +608,7 @@ export default function Home() {
                 opacity: inputValue.trim() && !isLoading ? 1 : 0.7,
                 transition: 'opacity 0.2s ease'
               }}
+              className="send-button"
             >
               Send
             </button>
@@ -529,7 +633,7 @@ export default function Home() {
           flexDirection: 'column',
           gap: '12px'
         }}>
-          <p style={{
+          <p className="disclaimer-text" style={{
             fontSize: '15px',
             lineHeight: '1.6',
             color: isDarkMode ? '#9ca3af' : '#6b7280',
@@ -539,7 +643,7 @@ export default function Home() {
             <strong style={{ color: isDarkMode ? '#e5e7eb' : '#4b5563' }}>Disclaimer:</strong> Serenity Health AI is not a substitute for professional mental health care. If you're experiencing a crisis or need immediate assistance, please contact emergency services or a mental health professional. Our AI provides general support and guidance only.
           </p>
           
-          <div style={{
+          <div className="footer-content" style={{
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
@@ -604,7 +708,7 @@ export default function Home() {
             }}>
               Chaos-Taming Solver passionate about creating elegant, user-centric applications. Specializing in AI-powered solutions that make a difference.
             </div>
-            <div style={{
+            <div className="divider" style={{
               width: '1px',
               height: '20px',
               background: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)',
@@ -787,6 +891,110 @@ export default function Home() {
 
         body.dark {
           color-scheme: dark;
+        }
+        
+        /* Responsive Styles */
+        @media (max-width: 768px) {
+          header span {
+            font-size: 28px !important;
+          }
+          
+          header svg {
+            width: 30px !important;
+            height: 30px !important;
+          }
+          
+          .feature-grid {
+            grid-template-columns: 1fr !important;
+          }
+          
+          .chat-message {
+            max-width: 90% !important;
+          }
+          
+          .footer-content {
+            flex-direction: column !important;
+            gap: 16px !important;
+          }
+          
+          .divider {
+            display: none !important;
+          }
+          
+          main {
+            height: 55vh !important; /* Slightly smaller on tablets */
+          }
+          
+          #messagesContainer {
+            max-height: calc(55vh - 120px) !important;
+          }
+        }
+        
+        @media (max-width: 480px) {
+          body {
+            padding: 10px !important;
+          }
+          
+          header span {
+            font-size: 22px !important;
+          }
+          
+          header svg {
+            width: 24px !important;
+            height: 24px !important;
+          }
+          
+          header {
+            margin-bottom: 20px !important;
+          }
+          
+          .welcome-title {
+            font-size: 20px !important;
+          }
+          
+          .welcome-text {
+            font-size: 15px !important;
+          }
+          
+          .feature-card {
+            padding: 16px !important;
+          }
+          
+          .feature-title {
+            font-size: 18px !important;
+          }
+          
+          .feature-desc {
+            font-size: 14px !important;
+          }
+          
+          .disclaimer-text {
+            font-size: 13px !important;
+          }
+          
+          main {
+            height: 50vh !important; /* Even smaller on phones */
+            min-height: 350px !important;
+          }
+          
+          #messagesContainer {
+            max-height: calc(50vh - 110px) !important;
+          }
+          
+          .chat-message {
+            font-size: 14px !important;
+            padding: 12px 14px !important;
+          }
+          
+          .chat-input {
+            padding: 14px 16px !important;
+            font-size: 14px !important;
+          }
+          
+          .send-button {
+            padding: 10px 18px !important;
+            font-size: 14px !important;
+          }
         }
       `}</style>
     </>
