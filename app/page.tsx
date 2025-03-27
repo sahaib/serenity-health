@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Brain, MessageCircle, Loader, Heart, HelpCircle, Moon, Sun, HeartHandshake, X, Upload, Download } from 'lucide-react';
+import { Send, Brain, MessageCircle, Loader, Heart, HelpCircle, Moon, Sun, HeartHandshake, X, Upload, Download, Coffee } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -148,6 +148,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showExportTooltip, setShowExportTooltip] = useState(false);
+  const [showKofiModal, setShowKofiModal] = useState(false);
   const [sideSheet, setSideSheet] = useState<{ isOpen: boolean; title: string; content: React.ReactNode }>({
     isOpen: false,
     title: '',
@@ -298,11 +299,17 @@ export default function Home() {
               />
               <span style={{
                 fontSize: '36px',
-                lineHeight: 1,
+                lineHeight: 1.2,
                 display: 'flex',
-                alignItems: 'center'
+                alignItems: 'center',
+                gap: '12px',
+                paddingBottom: '4px'
               }}>
-                Serenity Health AI
+                <span style={{ 
+                  fontFamily: "'Telma', serif",
+                  display: 'inline-block'
+                }}>Serenity</span>
+                <span>Health AI</span>
               </span>
             </div>
           </div>
@@ -327,7 +334,7 @@ export default function Home() {
                     transition: 'all 0.2s ease',
                   }}
                 >
-                  <Download size={22} />
+                  <Upload size={22} />
                 </button>
                 {showExportTooltip && (
                   <div style={{
@@ -354,6 +361,47 @@ export default function Home() {
                 )}
               </div>
             )}
+            <a
+              onClick={(e) => {
+                e.preventDefault();
+                setShowKofiModal(true);
+              }}
+              href="#"
+              className="kofi-button"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                borderRadius: '9999px',
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                color: 'white',
+                textDecoration: 'none',
+                fontSize: '14px',
+                fontWeight: '500',
+                transition: 'all 0.2s ease',
+                border: '1px solid',
+                borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.5)',
+                boxShadow: isDarkMode 
+                  ? '0 4px 12px rgba(0, 0, 0, 0.3)' 
+                  : '0 4px 12px rgba(99, 102, 241, 0.2)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = isDarkMode 
+                  ? '0 6px 16px rgba(0, 0, 0, 0.4)' 
+                  : '0 6px 16px rgba(99, 102, 241, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = isDarkMode 
+                  ? '0 4px 12px rgba(0, 0, 0, 0.3)' 
+                  : '0 4px 12px rgba(99, 102, 241, 0.2)';
+              }}
+            >
+              <Coffee size={18} />
+              <span>Buy me a coffee</span>
+            </a>
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
               style={{
@@ -828,7 +876,102 @@ export default function Home() {
         isDarkMode={isDarkMode}
       />
 
+      {showKofiModal && (
+        <>
+          <div
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '90%',
+              maxWidth: '480px',
+              background: isDarkMode ? 'rgba(23, 25, 35, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+              borderRadius: '24px',
+              padding: '20px',
+              zIndex: 1001,
+              boxShadow: isDarkMode 
+                ? '0 8px 32px rgba(0, 0, 0, 0.4)' 
+                : '0 8px 32px rgba(99, 102, 241, 0.2)',
+              border: '1px solid',
+              borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.5)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)'
+            }}
+          >
+            <div style={{
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              zIndex: 1
+            }}>
+              <button
+                onClick={() => setShowKofiModal(false)}
+                style={{
+                  background: isDarkMode 
+                    ? 'rgba(255, 255, 255, 0.1)' 
+                    : 'rgba(255, 255, 255, 0.3)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '8px',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: isDarkMode ? '#9ca3af' : '#6b7280',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = isDarkMode 
+                    ? 'rgba(255, 255, 255, 0.15)' 
+                    : 'rgba(255, 255, 255, 0.4)';
+                  e.currentTarget.style.color = isDarkMode ? '#e5e7eb' : '#4b5563';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = isDarkMode 
+                    ? 'rgba(255, 255, 255, 0.1)' 
+                    : 'rgba(255, 255, 255, 0.3)';
+                  e.currentTarget.style.color = isDarkMode ? '#9ca3af' : '#6b7280';
+                }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <iframe
+              id='kofiframe'
+              src='https://ko-fi.com/sahaib/?hidefeed=true&widget=true&embed=true&preview=true'
+              style={{
+                border: 'none',
+                width: '100%',
+                height: '712px',
+                background: isDarkMode ? '#1a1a1a' : '#f9f9f9',
+                borderRadius: '16px'
+              }}
+              title='sahaib'
+            />
+          </div>
+          <div
+            onClick={() => setShowKofiModal(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: isDarkMode 
+                ? 'rgba(0, 0, 0, 0.5)' 
+                : 'rgba(0, 0, 0, 0.2)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              zIndex: 1000
+            }}
+          />
+        </>
+      )}
+
       <style jsx global>{`
+        @import url('https://api.fontshare.com/v2/css?f[]=telma@400,700,500&display=swap');
+
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
@@ -843,20 +986,94 @@ export default function Home() {
           box-sizing: border-box;
           margin: 0;
           padding: 0;
+          -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
+        }
+
+        html {
+          height: -webkit-fill-available;
         }
 
         body {
           margin: 0;
           padding: 0;
+          min-height: 100vh;
+          min-height: -webkit-fill-available;
           font-family: 'EB Garamond', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, serif;
           background: ${isDarkMode 
             ? 'linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #2d2d2d 100%)'
             : 'linear-gradient(135deg, #e0e7ff 0%, #dbeafe 50%, #ede9fe 100%)'};
-          min-height: 100vh;
           color: ${isDarkMode ? '#e5e7eb' : '#1a1a1a'};
           transition: background 0.3s ease, color 0.3s ease;
           font-feature-settings: "liga" 1, "kern" 1;
           text-rendering: optimizeLegibility;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          overscroll-behavior-y: contain;
+        }
+
+        /* Improve scrolling performance */
+        #messagesContainer {
+          -webkit-overflow-scrolling: touch;
+          scroll-behavior: smooth;
+          overscroll-behavior: contain;
+          will-change: transform;
+        }
+
+        /* Optimize touch targets */
+        button, a {
+          touch-action: manipulation;
+          cursor: pointer;
+          user-select: none;
+          -webkit-user-select: none;
+        }
+
+        /* Prevent text selection on interactive elements */
+        .chat-message, .feature-card, .kofi-button {
+          user-select: none;
+          -webkit-user-select: none;
+        }
+
+        /* Optimize mobile form elements */
+        input, button {
+          appearance: none;
+          -webkit-appearance: none;
+          border-radius: 0;
+        }
+
+        /* PWA full-screen optimization */
+        @media all and (display-mode: standalone) {
+          body {
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+          }
+          
+          header {
+            padding-top: max(20px, env(safe-area-inset-top));
+          }
+          
+          footer {
+            padding-bottom: max(20px, env(safe-area-inset-bottom));
+          }
+
+          /* Ensure icons maintain size in PWA mode */
+          button svg, a svg {
+            min-width: 24px !important;
+            min-height: 24px !important;
+          }
+
+          .kofi-button {
+            min-width: 40px !important;
+            min-height: 40px !important;
+            padding: 8px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+
+          .kofi-button svg {
+            min-width: 20px !important;
+            min-height: 20px !important;
+          }
         }
 
         h1, h2, h3, h4, h5, h6 {
@@ -900,8 +1117,8 @@ export default function Home() {
           }
           
           header svg {
-            width: 30px !important;
-            height: 30px !important;
+            min-width: 30px !important;
+            min-height: 30px !important;
           }
           
           .feature-grid {
@@ -922,11 +1139,30 @@ export default function Home() {
           }
           
           main {
-            height: 55vh !important; /* Slightly smaller on tablets */
+            height: 55vh !important;
           }
           
           #messagesContainer {
             max-height: calc(55vh - 120px) !important;
+          }
+          
+          .kofi-button span {
+            display: none !important;
+          }
+          
+          .kofi-button {
+            min-width: 40px !important;
+            min-height: 40px !important;
+            padding: 8px !important;
+            border-radius: 50% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+
+          .kofi-button svg {
+            min-width: 20px !important;
+            min-height: 20px !important;
           }
         }
         
@@ -940,8 +1176,8 @@ export default function Home() {
           }
           
           header svg {
-            width: 24px !important;
-            height: 24px !important;
+            min-width: 24px !important;
+            min-height: 24px !important;
           }
           
           header {
@@ -973,7 +1209,7 @@ export default function Home() {
           }
           
           main {
-            height: 50vh !important; /* Even smaller on phones */
+            height: 50vh !important;
             min-height: 350px !important;
           }
           
@@ -994,6 +1230,26 @@ export default function Home() {
           .send-button {
             padding: 10px 18px !important;
             font-size: 14px !important;
+          }
+          
+          .kofi-button {
+            min-width: 36px !important;
+            min-height: 36px !important;
+            padding: 8px !important;
+          }
+          
+          .kofi-button svg {
+            min-width: 18px !important;
+            min-height: 18px !important;
+          }
+
+          /* Ensure touch targets are at least 44x44px for iOS */
+          button, a {
+            min-width: 44px !important;
+            min-height: 44px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
           }
         }
       `}</style>
