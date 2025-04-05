@@ -2,6 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Send, Brain, MessageCircle, Loader, Heart, HelpCircle, Moon, Sun, HeartHandshake, X, Upload, Download, Coffee } from 'lucide-react';
+import EmotionWheel from './components/EmotionWheel';
+import MoodJournal from './components/MoodJournal';
+import DailyPrompt from './components/DailyPrompt';
+import { useMoodEntries } from './hooks/useMoodEntries';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -142,6 +146,22 @@ const SideSheet: React.FC<SideSheetProps> = ({ isOpen, onClose, title, content, 
   );
 };
 
+interface ThemeConfig {
+  primary: string;
+  secondary: string;
+  gradient: string;
+  dark: {
+    bg: string;
+    text: string;
+  };
+  light: {
+    bg: string;
+    text: string;
+  };
+}
+
+type ThemeOptions = 'indigo' | 'emerald' | 'rose';
+
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -156,6 +176,79 @@ export default function Home() {
   });
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showSuggestions, setShowSuggestions] = useState(true);
+  const [selectedTheme, setSelectedTheme] = useState<ThemeOptions>('indigo');
+  const [currentMood, setCurrentMood] = useState<string | null>(null);
+  const [showEmotionWheel, setShowEmotionWheel] = useState(false);
+  const [showMoodJournal, setShowMoodJournal] = useState(false);
+  const [showDailyPrompt, setShowDailyPrompt] = useState(false);
+  const [moodEntries, setMoodEntries] = useState<Array<{
+    timestamp: number;
+    category: string;
+    emotion: string;
+    subEmotion: string;
+    note?: string;
+  }>>([]);
+  
+  const themes: Record<ThemeOptions, ThemeConfig> = {
+    indigo: {
+      primary: '#6366f1',
+      secondary: '#818cf8',
+      gradient: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+      dark: {
+        bg: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #2d2d2d 100%)',
+        text: '#e5e7eb'
+      },
+      light: {
+        bg: 'linear-gradient(135deg, #e0e7ff 0%, #dbeafe 50%, #ede9fe 100%)',
+        text: '#1a1a1a'
+      }
+    },
+    emerald: {
+      primary: '#10b981',
+      secondary: '#34d399',
+      gradient: 'linear-gradient(135deg, #10b981 0%, #34d399 100%)',
+      dark: {
+        bg: 'linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%)',
+        text: '#e5e7eb'
+      },
+      light: {
+        bg: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 50%, #6ee7b7 100%)',
+        text: '#064e3b'
+      }
+    },
+    rose: {
+      primary: '#f43f5e',
+      secondary: '#fb7185',
+      gradient: 'linear-gradient(135deg, #f43f5e 0%, #fb7185 100%)',
+      dark: {
+        bg: 'linear-gradient(135deg, #881337 0%, #9f1239 50%, #be123c 100%)',
+        text: '#e5e7eb'
+      },
+      light: {
+        bg: 'linear-gradient(135deg, #ffe4e6 0%, #fecdd3 50%, #fda4af 100%)',
+        text: '#881337'
+      }
+    }
+  };
+
+  const currentTheme = themes[selectedTheme];
+
+  const messageSuggestions = [
+    "I'm feeling anxious today",
+    "How can I manage stress better?",
+    "Help me with positive thinking",
+    "I need motivation"
+  ];
+
+  const moods = [
+    { emoji: '😊', label: 'Happy' },
+    { emoji: '😔', label: 'Sad' },
+    { emoji: '😌', label: 'Calm' },
+    { emoji: '😰', label: 'Anxious' },
+    { emoji: '😤', label: 'Frustrated' },
+    { emoji: '😴', label: 'Tired' }
+  ];
 
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
@@ -178,9 +271,156 @@ export default function Home() {
     }
   }, [isDarkMode]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  // Add useEffect for PWA installation prompt
+  useEffect(() => {
+    // Initialize PWA installation prompt
+    let deferredPrompt: any;
+    const showInstallPrompt = document.getElementById('show-install-prompt');
+    const installContainer = document.getElementById('pwa-install-container');
+    
+    // Hide the install button initially
+    if (installContainer) {
+      installContainer.style.display = 'none';
+    }
+    
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Prevent Chrome 67 and earlier from automatically showing the prompt
+      e.preventDefault();
+      // Stash the event so it can be triggered later
+      deferredPrompt = e;
+      // Show the install button
+      if (installContainer) {
+        installContainer.style.display = 'flex';
+      }
+    });
+    
+    // Add click handler for the install button
+    if (showInstallPrompt) {
+      showInstallPrompt.addEventListener('click', () => {
+        if (deferredPrompt) {
+          // Show the install prompt
+          deferredPrompt.prompt();
+          
+          // Wait for the user to respond to the prompt
+          deferredPrompt.userChoice.then((choiceResult: { outcome: string }) => {
+            if (choiceResult.outcome === 'accepted') {
+              console.log('User accepted the install prompt');
+            } else {
+              console.log('User dismissed the install prompt');
+            }
+            // Clear the saved prompt since it can't be used again
+            deferredPrompt = null;
+            // Hide the install button
+            if (installContainer) {
+              installContainer.style.display = 'none';
+            }
+          });
+        }
+      });
+    }
+    
+    // Handle PWA install completed event
+    window.addEventListener('appinstalled', () => {
+      console.log('PWA was installed');
+      // Hide the install button
+      if (installContainer) {
+        installContainer.style.display = 'none';
+      }
+    });
+  }, []);
+
+  // Use the mood entries hook for offline support
+  const { 
+    entries: moodEntriesFromDB, 
+    addEntry: addMoodEntryToDB, 
+    addNote: addMoodNoteToDB 
+  } = useMoodEntries();
+
+  // Update handleEmotionSelect to use IndexedDB
+  const handleEmotionSelect = async (emotionData: { category: string, emotion: string, subEmotion: string }) => {
+    try {
+      const { category, emotion, subEmotion } = emotionData;
+      
+      // Add to IndexedDB
+      await addMoodEntryToDB({
+        category,
+        emotion, 
+        subEmotion
+      });
+      
+      // Also update the local state
+      const newEntry = {
+        timestamp: Date.now(),
+        category,
+        emotion,
+        subEmotion
+      };
+      
+      setMoodEntries(prev => [newEntry, ...prev]);
+      setInputValue(`I'm feeling ${subEmotion.toLowerCase()}`);
+      setShowEmotionWheel(false);
+    } catch (error) {
+      console.error('Failed to save emotion:', error);
+      // Show error message to user
+    }
+  };
+
+  // Update handleAddNote to use IndexedDB
+  const handleAddNote = async (timestamp: number, note: string) => {
+    try {
+      // Add note to IndexedDB
+      await addMoodNoteToDB(timestamp, note);
+      
+      // Also update local state
+      setMoodEntries(entries =>
+        entries.map(entry =>
+          entry.timestamp === timestamp
+            ? { ...entry, note }
+            : entry
+        )
+      );
+    } catch (error) {
+      console.error('Failed to add note:', error);
+      // Show error message to user
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || isLoading) return;
+
+    // Check for emotion keywords in the input
+    const emotionKeywords = {
+      'sad': { category: 'Sadness', emotion: 'Sadness', subEmotion: 'Sad' },
+      'unhappy': { category: 'Sadness', emotion: 'Sadness', subEmotion: 'Unhappy' },
+      'depressed': { category: 'Sadness', emotion: 'Depression', subEmotion: 'Depressed' },
+      'happy': { category: 'Joy', emotion: 'Happiness', subEmotion: 'Happy' },
+      'glad': { category: 'Joy', emotion: 'Contentment', subEmotion: 'Glad' },
+      'excited': { category: 'Joy', emotion: 'Excitement', subEmotion: 'Excited' },
+      'angry': { category: 'Anger', emotion: 'Anger', subEmotion: 'Angry' },
+      'frustrated': { category: 'Anger', emotion: 'Frustration', subEmotion: 'Frustrated' },
+      'anxious': { category: 'Fear', emotion: 'Anxiety', subEmotion: 'Anxious' },
+      'afraid': { category: 'Fear', emotion: 'Fear', subEmotion: 'Afraid' },
+      'worried': { category: 'Fear', emotion: 'Worry', subEmotion: 'Worried' },
+      'love': { category: 'Love', emotion: 'Affection', subEmotion: 'Loving' },
+      'surprised': { category: 'Surprise', emotion: 'Surprise', subEmotion: 'Surprised' },
+      'tired': { category: 'Sadness', emotion: 'Fatigue', subEmotion: 'Tired' }
+    };
+    
+    // Check if the input contains any emotion keywords
+    const inputLower = inputValue.toLowerCase();
+    for (const [keyword, emotionData] of Object.entries(emotionKeywords)) {
+      if (inputLower.includes(keyword)) {
+        // Add a new mood entry when emotion is detected
+        setMoodEntries(prev => [...prev, {
+          timestamp: Date.now(),
+          category: emotionData.category,
+          emotion: emotionData.emotion,
+          subEmotion: emotionData.subEmotion
+        }]);
+        break;
+      }
+    }
 
     const newMessage: Message = { role: 'user', content: inputValue };
     const updatedMessages = [...messages, newMessage];
@@ -265,9 +505,7 @@ export default function Home() {
         alignItems: 'center',
         minHeight: '100vh',
         padding: '20px',
-        background: isDarkMode 
-          ? 'linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #2d2d2d 100%)'
-          : 'linear-gradient(135deg, #e0e7ff 0%, #dbeafe 50%, #ede9fe 100%)',
+        background: isDarkMode ? currentTheme.dark.bg : currentTheme.light.bg,
       }}>
         <header style={{
           width: '100%',
@@ -287,139 +525,150 @@ export default function Home() {
               display: 'flex',
               alignItems: 'center',
               gap: '16px',
-              letterSpacing: '-0.02em'
+              letterSpacing: '-0.02em',
+              position: 'relative'
             }}>
               <HeartHandshake 
                 size={36} 
                 style={{ 
                   color: '#6366f1',
                   flexShrink: 0,
-                  strokeWidth: 1.5
+                  strokeWidth: 1.5,
+                  filter: 'drop-shadow(0 4px 6px rgba(99, 102, 241, 0.2))'
                 }} 
               />
-              <span style={{
+              <div style={{
                 fontSize: '36px',
-                lineHeight: 1.2,
+                fontWeight: 'bold',
+                color: isDarkMode ? '#ffffff' : '#000000',
+                fontFamily: "'Clash Display', sans-serif",
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px',
-                paddingBottom: '4px'
+                gap: '12px'
               }}>
-                <span style={{ 
-                  fontFamily: "'Telma', serif",
-                  display: 'inline-block'
+                <span style={{
+                  fontFamily: "'Telma', serif"
                 }}>Serenity</span>
-                <span>Health AI</span>
-              </span>
+                <span style={{
+                  fontFamily: "'Clash Display', sans-serif",
+                  fontWeight: '600'
+                }}>Health AI</span>
+              </div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            {messages.length > 0 && (
-              <div style={{ position: 'relative' }}>
-                <button
-                  onClick={exportChat}
-                  title="Export conversation"
-                  onMouseEnter={() => setShowExportTooltip(true)}
-                  onMouseLeave={() => setShowExportTooltip(false)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '8px',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: isDarkMode ? '#e5e7eb' : '#1f2937',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  <Upload size={22} />
-                </button>
-                {showExportTooltip && (
-                  <div style={{
-                    position: 'absolute',
-                    bottom: '-40px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    backgroundColor: isDarkMode ? '#374151' : '#f3f4f6',
-                    color: isDarkMode ? '#e5e7eb' : '#1f2937',
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    whiteSpace: 'nowrap',
-                    zIndex: 10,
-                    boxShadow: isDarkMode 
-                      ? '0 4px 6px -1px rgba(0, 0, 0, 0.2)' 
-                      : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                    opacity: 1,
-                    transition: 'opacity 0.2s ease',
-                    pointerEvents: 'none'
-                  }}>
-                    Export chat (no data saved online)
-                  </div>
-                )}
-              </div>
-            )}
-            <a
-              onClick={(e) => {
-                e.preventDefault();
-                setShowKofiModal(true);
-              }}
-              href="#"
-              className="kofi-button"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                borderRadius: '9999px',
-                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                color: 'white',
-                textDecoration: 'none',
-                fontSize: '14px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease',
-                border: '1px solid',
-                borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.5)',
-                boxShadow: isDarkMode 
-                  ? '0 4px 12px rgba(0, 0, 0, 0.3)' 
-                  : '0 4px 12px rgba(99, 102, 241, 0.2)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.boxShadow = isDarkMode 
-                  ? '0 6px 16px rgba(0, 0, 0, 0.4)' 
-                  : '0 6px 16px rgba(99, 102, 241, 0.3)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = isDarkMode 
-                  ? '0 4px 12px rgba(0, 0, 0, 0.3)' 
-                  : '0 4px 12px rgba(99, 102, 241, 0.2)';
-              }}
-            >
-              <Coffee size={18} />
-              <span>Buy me a coffee</span>
-            </a>
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '8px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: isDarkMode ? '#e5e7eb' : '#1f2937',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
-            </button>
-          </div>
+          <nav style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            marginLeft: 'auto'
+          }}>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              {messages.length > 0 && (
+                <div style={{ position: 'relative' }}>
+                  <button
+                    onClick={exportChat}
+                    title="Export conversation"
+                    onMouseEnter={() => setShowExportTooltip(true)}
+                    onMouseLeave={() => setShowExportTooltip(false)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '8px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: isDarkMode ? '#e5e7eb' : '#1f2937',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    <Upload size={22} />
+                  </button>
+                  {showExportTooltip && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '-40px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      backgroundColor: isDarkMode ? '#374151' : '#f3f4f6',
+                      color: isDarkMode ? '#e5e7eb' : '#1f2937',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      whiteSpace: 'nowrap',
+                      zIndex: 10,
+                      boxShadow: isDarkMode 
+                        ? '0 4px 6px -1px rgba(0, 0, 0, 0.2)' 
+                        : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                      opacity: 1,
+                      transition: 'opacity 0.2s ease',
+                      pointerEvents: 'none'
+                    }}>
+                      Export chat (no data saved online)
+                    </div>
+                  )}
+                </div>
+              )}
+              <a
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowKofiModal(true);
+                }}
+                href="#"
+                className="kofi-button"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  borderRadius: '9999px',
+                  background: currentTheme.gradient,
+                  color: 'white',
+                  textDecoration: 'none',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s ease',
+                  border: '1px solid',
+                  borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.5)',
+                  boxShadow: isDarkMode 
+                    ? '0 4px 12px rgba(0, 0, 0, 0.3)' 
+                    : '0 4px 12px rgba(99, 102, 241, 0.2)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = isDarkMode 
+                    ? '0 6px 16px rgba(0, 0, 0, 0.4)' 
+                    : '0 6px 16px rgba(99, 102, 241, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = isDarkMode 
+                    ? '0 4px 12px rgba(0, 0, 0, 0.3)' 
+                    : '0 4px 12px rgba(99, 102, 241, 0.2)';
+                }}
+              >
+                <Coffee size={18} />
+                <span>Buy me a coffee</span>
+              </a>
+              <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                style={{
+                  padding: '8px',
+                  borderRadius: '12px',
+                  background: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: isDarkMode ? '#e5e7eb' : '#4b5563'
+                }}
+              >
+                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+            </div>
+          </nav>
         </header>
 
         <div style={{
@@ -531,7 +780,7 @@ export default function Home() {
                   justifyContent: 'center',
                   fontSize: '32px'
                 }}>
-                  💭
+                  {currentMood ? moods.find(m => m.label === currentMood)?.emoji : '💭'}
                 </div>
                 <div>
                   <h2 className="welcome-title" style={{
@@ -540,14 +789,96 @@ export default function Home() {
                     fontWeight: '600',
                     color: isDarkMode ? '#e5e7eb' : '#1f2937',
                     letterSpacing: '0.01em'
-                  }}>Welcome to Health AI</h2>
+                  }}>Welcome to Serenity Health AI</h2>
                   <p className="welcome-text" style={{ 
-                    margin: 0, 
+                    margin: '0 0 24px 0', 
                     fontSize: '17px',
                     lineHeight: '1.6' 
                   }}>
-                    Feel free to share your thoughts or concerns. I'm here to listen and support you.
+                    {currentMood 
+                      ? `Feeling ${currentMood.toLowerCase()}? I'm here to listen and support you.`
+                      : 'How are you feeling today? Select your mood below.'}
                   </p>
+                  
+                  <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '8px',
+                    justifyContent: 'center',
+                    marginBottom: '24px'
+                  }}>
+                    {moods.map((mood) => (
+                      <button
+                        key={mood.label}
+                        onClick={() => {
+                          setCurrentMood(mood.label);
+                          setInputValue(`I'm feeling ${mood.label.toLowerCase()} today`);
+                        }}
+                        style={{
+                          padding: '12px',
+                          borderRadius: '16px',
+                          background: currentMood === mood.label
+                            ? currentTheme.gradient
+                            : isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '4px',
+                          color: currentMood === mood.label
+                            ? 'white'
+                            : isDarkMode ? '#e5e7eb' : '#4b5563',
+                          transition: 'all 0.2s ease',
+                          fontSize: '24px'
+                        }}
+                      >
+                        <span role="img" aria-label={mood.label}>{mood.emoji}</span>
+                        <span style={{ fontSize: '14px' }}>{mood.label}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {showSuggestions && (
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                      justifyContent: 'center'
+                    }}>
+                      {messageSuggestions.map((suggestion, index) => (
+                        <button
+                          key={index}
+                          onClick={() => {
+                            setInputValue(suggestion);
+                            setShowSuggestions(false);
+                          }}
+                          style={{
+                            padding: '8px 16px',
+                            borderRadius: '9999px',
+                            background: isDarkMode ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.1)',
+                            border: '1px solid',
+                            borderColor: isDarkMode ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.2)',
+                            color: isDarkMode ? '#e5e7eb' : '#4b5563',
+                            fontSize: '14px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            whiteSpace: 'nowrap'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = isDarkMode ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.15)';
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = isDarkMode ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.1)';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                          }}
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
@@ -596,17 +927,10 @@ export default function Home() {
                   </div>
                 ))}
                 {isLoading && (
-                  <div style={{
-                    alignSelf: 'flex-start',
-                    padding: '12px 16px',
-                    borderRadius: '18px',
-                    background: isDarkMode ? 'rgba(23, 25, 35, 0.75)' : 'rgba(255, 255, 255, 0.7)',
-                    border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.15)' : '#eaeaea'}`,
-                    color: isDarkMode ? '#e5e7eb' : 'inherit',
-                    fontSize: '15px',
-                    animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
-                  }}>
-                    Thinking...
+                  <div className="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
                   </div>
                 )}
                 <div ref={messagesEndRef} style={{ height: '1px', width: '100%' }} />
@@ -614,53 +938,126 @@ export default function Home() {
             )}
           </div>
 
-          <form onSubmit={handleSendMessage} style={{ 
-            display: 'flex',
-            border: '1px solid',
-            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.7)',
-            borderRadius: '9999px',
-            overflow: 'hidden',
-            background: isDarkMode ? 'rgba(23, 25, 35, 0.6)' : 'rgba(255, 255, 255, 0.25)',
-            boxShadow: isDarkMode 
-              ? '0 8px 32px rgba(0, 0, 0, 0.5), inset 0 2px 15px rgba(255, 255, 255, 0.07)'
-              : '0 8px 32px rgba(99, 102, 241, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.5)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)'
+          <div style={{
+            position: 'relative',
+            marginTop: '20px'
           }}>
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Type your message..."
-              style={{
-                flex: 1,
-                padding: '16px 24px',
-                border: 'none',
-                background: 'transparent',
-                color: isDarkMode ? '#e5e7eb' : 'inherit',
-                fontSize: '15px',
-                outline: 'none'
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              marginBottom: '16px',
+              justifyContent: 'center',
+              flexWrap: 'wrap'
+            }}>
+              <button
+                onClick={() => setShowMoodJournal(true)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '12px',
+                  background: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: isDarkMode ? '#e5e7eb' : '#4b5563',
+                  fontSize: '15px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                📔 Mood Journal
+              </button>
+
+              <button
+                onClick={() => setShowDailyPrompt(true)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '12px',
+                  background: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: isDarkMode ? '#e5e7eb' : '#4b5563',
+                  fontSize: '15px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                💭 Daily Reflection
+              </button>
+
+              <button
+                onClick={() => setShowEmotionWheel(true)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '12px',
+                  background: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: isDarkMode ? '#e5e7eb' : '#4b5563',
+                  fontSize: '15px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                🎯 Track Emotion
+              </button>
+            </div>
+
+            <form 
+              onSubmit={handleSubmit} 
+              style={{ 
+                display: 'flex',
+                border: '1px solid',
+                borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.7)',
+                borderRadius: '9999px',
+                overflow: 'hidden',
+                background: isDarkMode ? 'rgba(23, 25, 35, 0.6)' : 'rgba(255, 255, 255, 0.25)',
+                boxShadow: isDarkMode 
+                  ? '0 8px 32px rgba(0, 0, 0, 0.5), inset 0 2px 15px rgba(255, 255, 255, 0.07)'
+                  : '0 8px 32px rgba(99, 102, 241, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.5)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)'
               }}
-              className="chat-input"
-            />
-            <button
-              type="submit"
-              disabled={!inputValue.trim() || isLoading}
-              style={{
-                padding: '12px 24px',
-                border: 'none',
-                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                color: 'white',
-                fontSize: '15px',
-                cursor: inputValue.trim() && !isLoading ? 'pointer' : 'not-allowed',
-                opacity: inputValue.trim() && !isLoading ? 1 : 0.7,
-                transition: 'opacity 0.2s ease'
-              }}
-              className="send-button"
             >
-              Send
-            </button>
-          </form>
+              <input
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder={currentMood ? `Tell me more about feeling ${currentMood.toLowerCase()}...` : "How can I help you today?"}
+                style={{
+                  flex: 1,
+                  padding: '16px 24px',
+                  background: 'transparent',
+                  border: 'none',
+                  color: isDarkMode ? '#e5e7eb' : '#1f2937',
+                  fontSize: '15px',
+                  outline: 'none'
+                }}
+                className="chat-input"
+              />
+              <button
+                type="submit"
+                disabled={!inputValue.trim() || isLoading}
+                style={{
+                  padding: '16px 24px',
+                  background: currentTheme.gradient,
+                  border: 'none',
+                  color: 'white',
+                  fontSize: '15px',
+                  cursor: inputValue.trim() && !isLoading ? 'pointer' : 'not-allowed',
+                  opacity: inputValue.trim() && !isLoading ? 1 : 0.7,
+                  transition: 'opacity 0.2s ease'
+                }}
+                className="send-button"
+              >
+                Send
+              </button>
+            </form>
+        </div>
       </main>
 
         <footer style={{
@@ -969,8 +1366,185 @@ export default function Home() {
         </>
       )}
 
+      {showEmotionWheel && (
+        <>
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 100
+          }}>
+            <div style={{
+              position: 'relative',
+              width: '90%',
+              maxWidth: '600px',
+            }}>
+              <button
+                onClick={() => setShowEmotionWheel(false)}
+                style={{
+                  position: 'absolute',
+                  top: '10px',
+                  right: '10px',
+                  background: 'transparent',
+                  border: 'none',
+                  color: isDarkMode ? '#fff' : '#000',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  zIndex: 101
+                }}
+              >
+                ×
+              </button>
+              <EmotionWheel
+                isDarkMode={isDarkMode}
+                onEmotionSelect={handleEmotionSelect}
+              />
+              {moodEntries.length === 0 && (
+                <div style={{
+                  marginTop: '20px',
+                  display: 'flex',
+                  justifyContent: 'center'
+                }}>
+                  <button
+                    onClick={() => setShowEmotionWheel(true)}
+                    style={{
+                      background: isDarkMode 
+                        ? 'rgba(255, 255, 255, 0.1)' 
+                        : 'rgba(79, 70, 229, 0.1)',
+                      border: '1px solid',
+                      borderColor: isDarkMode 
+                        ? 'rgba(255, 255, 255, 0.2)' 
+                        : 'rgba(79, 70, 229, 0.2)',
+                      borderRadius: '8px',
+                      padding: '8px 16px',
+                      color: isDarkMode ? '#e5e7eb' : '#4338ca',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      fontWeight: '500'
+                    }}
+                  >
+                    Track Your First Emotion
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {showMoodJournal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 100
+        }}>
+          <div style={{
+            position: 'relative',
+            width: '90%',
+            maxWidth: '600px',
+          }}>
+            <button
+              onClick={() => setShowMoodJournal(false)}
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '10px',
+                background: 'transparent',
+                border: 'none',
+                color: isDarkMode ? '#fff' : '#000',
+                fontSize: '24px',
+                cursor: 'pointer',
+                zIndex: 101
+              }}
+            >
+              ×
+            </button>
+            <MoodJournal
+              initialEntries={moodEntries}
+              isDarkMode={isDarkMode}
+              onAddNote={handleAddNote}
+            />
+          </div>
+        </div>
+      )}
+
+      {showDailyPrompt && (
+        <>
+          <div style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 1001,
+            width: '90%',
+            maxWidth: '500px'
+          }}>
+            <div style={{
+              position: 'relative'
+            }}>
+              <button
+                onClick={() => setShowDailyPrompt(false)}
+                style={{
+                  position: 'absolute',
+                  top: '-40px',
+                  right: 0,
+                  padding: '8px',
+                  borderRadius: '12px',
+                  background: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: isDarkMode ? '#e5e7eb' : '#4b5563'
+                }}
+              >
+                <X size={20} />
+              </button>
+              <DailyPrompt
+                isDarkMode={isDarkMode}
+                onPromptSelect={(prompt) => {
+                  setInputValue(prompt);
+                  setShowDailyPrompt(false);
+                }}
+              />
+            </div>
+          </div>
+          <div
+            onClick={() => setShowDailyPrompt(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: isDarkMode 
+                ? 'rgba(0, 0, 0, 0.5)' 
+                : 'rgba(0, 0, 0, 0.2)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              zIndex: 1000
+            }}
+          />
+        </>
+      )}
+
       <style jsx global>{`
         @import url('https://api.fontshare.com/v2/css?f[]=telma@400,700,500&display=swap');
+        @import url('https://api.fontshare.com/v2/css?f[]=clash-display@400,700,600,500&display=swap');
 
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
@@ -1000,10 +1574,8 @@ export default function Home() {
           min-height: 100vh;
           min-height: -webkit-fill-available;
           font-family: 'EB Garamond', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, serif;
-          background: ${isDarkMode 
-            ? 'linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #2d2d2d 100%)'
-            : 'linear-gradient(135deg, #e0e7ff 0%, #dbeafe 50%, #ede9fe 100%)'};
-          color: ${isDarkMode ? '#e5e7eb' : '#1a1a1a'};
+          background: ${isDarkMode ? currentTheme.dark.bg : currentTheme.light.bg};
+          color: ${isDarkMode ? currentTheme.dark.text : currentTheme.light.text};
           transition: background 0.3s ease, color 0.3s ease;
           font-feature-settings: "liga" 1, "kern" 1;
           text-rendering: optimizeLegibility;
@@ -1252,7 +1824,149 @@ export default function Home() {
             justify-content: center !important;
           }
         }
+
+        /* Message animations and styling */
+        .chat-message {
+          animation: slideIn 0.3s ease-out;
+          transition: all 0.2s ease;
+        }
+
+        .chat-message:hover {
+          transform: translateY(-1px);
+          box-shadow: ${isDarkMode
+            ? '0 6px 24px rgba(0, 0, 0, 0.4), inset 0 2px 15px rgba(255, 255, 255, 0.07)'
+            : '0 6px 24px rgba(99, 102, 241, 0.15)'} !important;
+        }
+
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        /* Typing indicator animation */
+        .typing-indicator {
+          display: flex;
+          gap: 4px;
+          padding: 12px 16px;
+          border-radius: 18px;
+          background: ${isDarkMode ? 'rgba(23, 25, 35, 0.75)' : 'rgba(255, 255, 255, 0.7)'};
+          border: 1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.15)' : '#eaeaea'};
+          align-self: flex-start;
+        }
+
+        .typing-indicator span {
+          width: 6px;
+          height: 6px;
+          background: ${isDarkMode ? '#9ca3af' : '#6b7280'};
+          border-radius: 50%;
+          animation: bounce 1.4s infinite ease-in-out;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+          0%, 80%, 100% { transform: scale(0); }
+          40% { transform: scale(1); }
+        }
+
+        /* Input field enhancements */
+        .chat-input:focus {
+          box-shadow: inset 0 0 0 2px ${currentTheme.primary};
+          background: ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.5)'};
+        }
+
+        .send-button:not(:disabled):hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .chat-message {
+          border-color: ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : `${currentTheme.primary}20`};
+        }
+
+        .kofi-button {
+          background: ${currentTheme.gradient};
+        }
       `}</style>
+
+      {/* PWA Install Prompt */}
+      <div 
+        id="pwa-install-container"
+        style={{
+          display: 'none',
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          padding: '16px',
+          borderRadius: '12px',
+          background: isDarkMode ? 'rgba(23, 25, 35, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          boxShadow: isDarkMode 
+            ? '0 8px 32px rgba(0, 0, 0, 0.4)' 
+            : '0 8px 32px rgba(99, 102, 241, 0.2)',
+          border: '1px solid',
+          borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.5)',
+          zIndex: 50,
+          maxWidth: '280px',
+          flexDirection: 'column',
+          gap: '12px'
+        }}
+      >
+        <div style={{
+          fontSize: '15px',
+          color: isDarkMode ? '#e5e7eb' : '#1f2937',
+          marginBottom: '8px'
+        }}>
+          Install Serenity Health AI for offline access
+        </div>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: '8px'
+        }}>
+          <button 
+            onClick={() => {
+              const container = document.getElementById('pwa-install-container');
+              if (container) {
+                container.style.display = 'none';
+              }
+            }}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '8px',
+              background: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+              border: '1px solid',
+              borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+              color: isDarkMode ? '#e5e7eb' : '#4b5563',
+              fontSize: '14px',
+              cursor: 'pointer'
+            }}
+          >
+            Later
+          </button>
+          <button 
+            id="show-install-prompt"
+            style={{
+              padding: '6px 12px',
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              border: 'none',
+              color: 'white',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer'
+            }}
+          >
+            Install
+          </button>
+        </div>
+      </div>
     </>
   );
 }
